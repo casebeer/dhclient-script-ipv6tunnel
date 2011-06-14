@@ -38,7 +38,8 @@ BOUND|RENEW|REBIND|REBOOT)
     if [ "$old_ip_address" != "$new_ip_address" ]; then
 
        $LOGGER "Updating tunnelbroker.net with changed IPv4 address (${old_ip_address} => ${new_ip_address})"
-       $WGET https://ipv4.tunnelbroker.net/ipv4_end.php?ip=AUTO&pass=${HE_MD5PASS}&apikey=${HE_USERID}&tid=${HE_TUNNELID}
+       $WGET --no-check-certificate \
+             "https://ipv4.tunnelbroker.net/ipv4_end.php?ip=AUTO&pass=${HE_MD5PASS}&apikey=${HE_USERID}&tid=${HE_TUNNELID}"
     fi
 
     # setup tunnel (IPv4 end points)
