@@ -5,57 +5,52 @@
 # maintenance tasks to manage an IPv6 tunnel (from tunnelbroker.net).
 
 # the following variables must be defined in the configuration file
-#HE_USER_ID
-#HE_TUNNEL_ID
-#HE_MD5_PASS
+#HE_USERID
+#HE_TUNNELID
+#HE_MD5PASS
 #TUNNEL_IF
 #TUNNEL_SRV_IPV4
 #TUNNEL_SRV_IPV6
 #TUNNEL_LOCAL_IPV6
 
-LOG="/home/chuckx/ipv6.log"
-DHCLIENT_SCRIPT="/sbin/dhclient-script"
+LOGGER="/user/bin/logger"
+WGET="/usr/local/bin/wget"
+IFCONFIG="/sbin/ifconfig"
 
-CONF="/home/chuckx/code/dhclient-script-ipv6tunnel/dhclient-script-ipv6tunnel.conf"
+DHCLIENT_SCRIPT="/etc/dhclient-script"
+
+CONF="/etc/defaults/dhclient-script-ipv6tunnel.conf"
 
 # load configuration file
 . ${CONF}
 
-# call normal dhclient-script
-${DHCLIENT_SCRIPT}
-
-# if dhclient-script fails, follow suit
-if [ "$?" -eq "1" ]
-then
-    exit 1
-fi
+# call normal dhclient-script, if dhclient-script fails, follow suit
+if ! ${DHCLIENT_SCRIPT}; then exit 1; fi
 
 # manage IPv6 tunnel
 case $reason in
 
 BOUND|RENEW|REBIND|REBOOT)
 
-    echo "IPV6 processing..." >> ${LOG}
+    $LOGGER "Configuring IPv6 tunnel following DHCP ${reason}"
 
     # if new IP address, update tunnel service
     if [ "$old_ip_address" != "$new_ip_address" ]; then
 
-       echo "Updating tunnelbroker.net with IPv4 address" >> ${LOG}
-
-        wget https://ipv4.tunnelbroker.net/ipv4_end.php?ipv4b=${new_ip_address}&pass=${HE_MD_PASS}&user_id=${HE_USER_ID}&tunnel_id=${HE_TUNNEL_ID}
+       $LOGGER "Updating tunnelbroker.net with changed IPv4 address (${old_ip_address} => ${new_ip_address})"
+       $WGET https://ipv4.tunnelbroker.net/ipv4_end.php?ip=AUTO&pass=${HE_MD5PASS}&apikey=${HE_USERID}&tid=${HE_TUNNELID}
     fi
 
     # setup tunnel (IPv4 end points)
-    ifconfig ${TUNNEL_IF} tunnel ${new_ip_address} ${TUNNEL_SRV_IPV4}
+    $IFCONFIG ${TUNNEL_IF} tunnel ${new_ip_address} ${TUNNEL_SRV_IPV4}
 
     # setup tunnel (IPv6 end points)
-    ifconfig ${TUNNEL_IF} inet6 alias ${TUNNEL_LOCAL_IPV6} ${TUNNEL_SRV_IPV6} prefixlen 128
+    $IFCONFIG ${TUNNEL_IF} inet6 alias ${TUNNEL_LOCAL_IPV6} ${TUNNEL_SRV_IPV6} prefixlen 128
 
     # setup IPv6 default route
     route -n add -inet6 default ${TUNNEL_SRV_IPV6}
 
-    echo "done." >> ${LOG}
-    echo >> ${LOG}
+    $LOGGER "Done configuring IPv6 tunnel."
 
     ;;
 esac
